@@ -19,7 +19,7 @@ koko は Linux で動作することが確認されています。
 ## インストール
 
 ```bash
-apm install asuka1975/koko#v0.1.1
+apm install asuka1975/koko#v0.1.2
 ```
 
 APM によって、`.claude/skills/koko/` と `.claude/agents/koko-copy-editor.md` がプロジェクトに展開されます。koko の初回の使用の前には、次のコマンドの実行によって実行環境が用意されます。
