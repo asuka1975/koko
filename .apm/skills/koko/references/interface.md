@@ -4,7 +4,7 @@ koko をほかのスキルやワークフローから呼ぶときに頼ってよ
 
 コマンドは `uv run <koko.py> <サブコマンド>` で動かします。`<koko.py>` は、このスキルの `scripts/koko.py` です。
 
-P(Yes) は、同梱の判定モデルが 1 文を「人が書いた文（Wikipedia 由来）」と判定する確率です（0〜1。0 に近いほど AI が書いた文と判定されている）。まとまりの値は、まとまり内の文の P(Yes) の平均です。
+P(Yes) は、判定モデルが 1 文を「人が書いた文（Wikipedia 由来）」と判定する確率です（0〜1。0 に近いほど AI が書いた文と判定されている）。まとまりの値は、まとまり内の文の P(Yes) の平均です。
 
 ## 準備の状態: `doctor`
 
@@ -17,8 +17,8 @@ uv run <koko.py> doctor --json
 | status | 意味 |
 |---|---|
 | `ready` | 使える |
-| `needs_setup` | 採点サーバの環境がない。`uv run <koko.py> setup` で用意できる（初回は torch などを数 GB ダウンロードすることがある） |
-| `unavailable` | 使えない。同梱のモデルが壊れている・欠けている（`model.problems`）、または uv がない |
+| `needs_setup` | 判定モデルをまだ取得していない（`model.fetched` が `false`）か、取得したファイルが欠けている（`model.problems`）か、採点サーバの環境がない。`uv run <koko.py> setup` で、判定モデルを Hugging Face から `~/.cache/koko` に取得し（約 2.6 GB）、環境を用意できる（初回は torch などを数 GB ダウンロードすることがある） |
+| `unavailable` | 使えない。判定モデルの情報（`model.json`）がない、`KOKO_MODEL` で指定したモデルに問題がある、または uv がない |
 
 `gpu.cuda` が `false` で `gpu.mps` が `true` なら、採点は MPS（Apple Silicon の GPU）で動きます。どちらも `false` なら、採点は CPU で動きます（CPU での速さは確かめていません）。テキストの出力では、1 行目が `koko-doctor: <status>` です。終了コードは `ready` のとき 0、それ以外は 1 です。
 

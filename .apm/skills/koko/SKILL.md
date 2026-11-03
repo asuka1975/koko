@@ -11,7 +11,7 @@ description: 日本語の文章（Markdown の記事、ドキュメント、READ
 
 ## 指標
 
-- 判定モデルは、このスキルの `model/` に同梱しています（saihai-v1-8b をファインチューニングし、2bit に量子化したもの。約 2.6 GB。由来は `model/NOTICE.md`）。文体（丁寧体か、長さ、英字の有無）をそろえて学習した版なので、です・ます調かどうかに頼らず、話題や書きぶりで判定します。
+- 判定モデルは、saihai-v1-8b をファインチューニングし、2bit に量子化したものです（約 2.6 GB）。初めて使うとき（`setup` か、採点サーバの起動のとき）に、Hugging Face Hub から `~/.cache/koko` に取得します。取得先の版と各ファイルの SHA-256 は、このスキルの `model.json` に固定してあり、取得したファイルはその値と照らします。由来は、取得したディレクトリの `NOTICE.md` にあります。文体（丁寧体か、長さ、英字の有無）をそろえて学習した版なので、です・ます調かどうかに頼らず、話題や書きぶりで判定します。
 - 入力は 1 文です。P(Yes) は、その文を Wikipedia 由来（人が書いた側）と判定する確率です。まとまりの値は、まとまり内の文の P(Yes) の単純平均です。目標は 0.9 以上です。
 - 文の分け方と前処理は、モデルの学習データと同じです（`scripts/kokotext.py`）。採点は 1 文ずつ行い、同じ文にはいつも同じ値が付きます。新しい文は 1 秒に 4 文ほどです（GPU のとき）。
 - 作業の報告や評価・結果の数値を述べる文は、どう言い換えても上がりにくいです。以前の実験では、Haiku に推敲させて目標に届いたのは 34 まとまりのうち 2 まとまりでした。届かないまとまりが出ることを前提に、結果は正直に報告してください。
@@ -153,7 +153,10 @@ $KOKO assemble --plan WORK/plan.json --out OUT  # 別の OUT を指定された�
 |---|---|
 | `KOKO_TORCH` | 採点サーバの torch の種類。`nvidia-smi` があれば `cu130`、なければ `cpu`（macOS では、MPS を使える PyPI の torch が入る） |
 | `KOKO_STATE_DIR` | 採点サーバの状態とログの置き場所。`$XDG_RUNTIME_DIR/koko`、なければ一時ディレクトリの `koko-<uid>` |
-| `KOKO_MODEL` | このスキルの `model/` |
+| `KOKO_MODEL` | なし（指定すると、取得せずにそのディレクトリのモデルを使う） |
+| `KOKO_CACHE_DIR` | `~/.cache/koko`（判定モデルは `models/<名前>-<model_id の先頭 12 桁>/` に置く） |
+| `KOKO_MODEL_SOURCE` | このスキルの `model.json`（判定モデルの取得先と、各ファイルの大きさ・SHA-256） |
+| `HF_ENDPOINT` | `https://huggingface.co`（ミラーを使うとき） |
 | `KOKO_DEVICE` | CUDA が使えれば `cuda`、次に MPS（Apple Silicon の GPU）が使えれば `mps`、どちらもなければ `cpu` |
 | `KOKO_IDLE_SECONDS` | `1800` |
 | `KOKO_FAKE_SCORER` | なし（`1` で、モデルを使わずに仮の値を返す。テスト用） |

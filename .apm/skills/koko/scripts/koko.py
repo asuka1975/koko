@@ -10,12 +10,12 @@
 `uv run <このファイル> <サブコマンド>` で動かす（この CLI は標準ライブラリだけで動く）。
 採点サーバは、依存の版を固定した uv のスクリプト（serve_cu130.py / serve_cpu.py とそのロック）で動く。
 
-P(Yes) は、同梱の判定モデル（saihai-v1-8b を基にファインチューニングし、2bit に量子化したもの）が、
+P(Yes) は、判定モデル（saihai-v1-8b を基にファインチューニングし、2bit に量子化したもの）が、
 その 1 文を「Wikipedia 由来（人が書いた側）」と判定する確率。0 に近いほど「Claude 由来」と判定されている。
 
 サブコマンド:
   doctor                     動かす準備ができているかを調べる（1 行目に koko-doctor: ready|needs_setup|unavailable）
-  setup                      採点サーバの環境を uv で用意する（初回は torch などを数 GB ダウンロードすることがある）
+  setup                      判定モデルを Hugging Face から ~/.cache/koko に取得し（約 2.6 GB）、採点サーバの環境を uv で用意する
   server start|stop|status   採点サーバ（モデルを GPU に 1 回だけ載せる）の起動・停止・確認
   score  [FILE ...|-]        まとまりを採点する。--variants で「===」の行で区切った複数案、--lines で 1 行 1 案
   blocks FILE                文書をブロックに分けて採点し、まとまりの計画の下書きを出す
@@ -26,7 +26,10 @@ P(Yes) は、同梱の判定モデル（saihai-v1-8b を基にファインチュ
 
 環境変数:
   KOKO_TORCH         採点サーバの torch の種類: cu130 / cpu（既定: nvidia-smi があれば cu130。macOS は cpu の入口で、MPS を使える PyPI の torch が入る）
-  KOKO_MODEL         同梱以外のモデルのディレクトリ（manifest.json があるもの）
+  KOKO_MODEL         取得せずに使うモデルのディレクトリ（manifest.json があるもの）
+  KOKO_CACHE_DIR     判定モデルを取得して置く場所（既定: ~/.cache/koko）
+  KOKO_MODEL_SOURCE  判定モデルの取得先を書いたファイル（既定: このスキルの model.json）
+  HF_ENDPOINT        Hugging Face の URL（既定: https://huggingface.co。ミラーを使うとき）
   KOKO_DEVICE        cuda / mps / cpu（既定: CUDA が使えれば cuda、次に MPS が使えれば mps、どちらもなければ cpu）
   KOKO_IDLE_SECONDS  採点サーバが自動で止まるまでの待ち時間（既定: 1800）
   KOKO_STATE_DIR     採点サーバの状態とログの置き場所（既定: $XDG_RUNTIME_DIR/koko、なければ一時ディレクトリの koko-<uid>）
@@ -60,7 +63,9 @@ import kokotext  # noqa: E402
 KOKO_VERSION = "0.1.0"
 PROTOCOL = 2
 SKILL_DIR = HERE.parent
-MODEL_DIR = Path(os.environ.get("KOKO_MODEL") or SKILL_DIR / "model").resolve()
+SOURCE_FILE = Path(os.environ.get("KOKO_MODEL_SOURCE") or SKILL_DIR / "model.json").resolve()
+CACHE_DIR = Path(os.environ.get("KOKO_CACHE_DIR") or Path.home() / ".cache" / "koko").expanduser().resolve()
+LOCAL_MODEL = os.environ.get("KOKO_MODEL")  # 取得せずに、このディレクトリのモデルを使う
 ENTRIES = {"cu130": HERE / "serve_cu130.py", "cpu": HERE / "serve_cpu.py"}
 
 
@@ -87,37 +92,140 @@ def die(msg: str, code: int = 1):
 
 # --- モデルと実行環境 ---------------------------------------------------------------------------
 
-_MANIFEST: dict | None = None
+_SOURCE: dict | None = None
+
+
+def source() -> dict:
+    """判定モデルの取得先と、取得するファイルの大きさ・SHA-256（model.json）。KOKO_MODEL のときはその manifest.json。"""
+    global _SOURCE
+    if _SOURCE is None:
+        p = Path(LOCAL_MODEL).resolve() / "manifest.json" if LOCAL_MODEL else SOURCE_FILE
+        if not p.exists():
+            die(f"判定モデルの情報がありません: {p}", 3)
+        _SOURCE = json.loads(p.read_text(encoding="utf-8"))
+    return _SOURCE
 
 
 def manifest() -> dict:
-    global _MANIFEST
-    if _MANIFEST is None:
-        p = MODEL_DIR / "manifest.json"
-        if not p.exists():
-            die(f"モデルの manifest.json がありません: {p}")
-        _MANIFEST = json.loads(p.read_text())
-    return _MANIFEST
+    return source()
+
+
+def model_dir() -> Path:
+    """判定モデルを置く場所。既定は ~/.cache/koko/models/<名前>-<model_id の先頭 12 桁>。"""
+    if LOCAL_MODEL:
+        return Path(LOCAL_MODEL).resolve()
+    s = source()
+    return CACHE_DIR / "models" / f"{s['name']}-{s['model_id'][:12]}"
 
 
 def model_id() -> str:
-    return "fake" if FAKE else manifest()["model_id"]
+    return "fake" if FAKE else source()["model_id"]
 
 
 def model_problems(deep: bool = False) -> list[str]:
+    """揃っていないファイルの説明。空なら揃っている。deep では SHA-256 も照らす。"""
     problems = []
-    for f in manifest()["files"]:
-        p = MODEL_DIR / f["name"]
+    d = model_dir()
+    for f in source()["files"]:
+        p = d / f["name"]
         if not p.exists():
-            problems.append(f"{f['name']}: ありません")
+            problems.append(f"{f['name']}: まだ取得していません")
             continue
         size = p.stat().st_size
         if size != f["bytes"]:
-            lfs = p.open("rb").read(64).startswith(b"version https://git-lfs")
-            problems.append(f"{f['name']}: {size} バイト（{f['bytes']} バイトのはず）" + ("。Git LFS のポインタのままです（`git lfs pull` が必要）" if lfs else ""))
+            problems.append(f"{f['name']}: {size} バイト（{f['bytes']} バイトのはず）")
         elif deep and sha256_file(p) != f["sha256"]:
-            problems.append(f"{f['name']}: SHA-256 が manifest と合いません")
+            problems.append(f"{f['name']}: SHA-256 が合いません")
     return problems
+
+
+def _download(url: str, dest: Path, f: dict, quiet: bool) -> None:
+    """url を dest に取得する。途中のファイル（.part）があれば続きから取る。SHA-256 が合ったときだけ dest に置く。"""
+    import urllib.error
+    import urllib.request
+
+    part = dest.with_name(dest.name + ".part")
+    have = part.stat().st_size if part.exists() else 0
+    if have > f["bytes"]:
+        part.unlink()
+        have = 0
+    h = hashlib.sha256()
+    if have:
+        with part.open("rb") as fh:
+            for block in iter(lambda: fh.read(1 << 22), b""):
+                h.update(block)
+    if have < f["bytes"]:
+        req = urllib.request.Request(url, headers={"User-Agent": f"koko/{KOKO_VERSION}", **({"Range": f"bytes={have}-"} if have else {})})
+        try:
+            resp = urllib.request.urlopen(req, timeout=60)
+        except (urllib.error.URLError, OSError) as e:
+            die(f"判定モデルを取得できませんでした（{url}）: {e}。ネットワークを確かめて、やり直してください（取得したところまでは残してあり、続きから取ります）", 3)
+        with resp:
+            if have and resp.status != 206:  # 続きからの取得に応じなかったので、初めから取る
+                have, h = 0, hashlib.sha256()
+            mode = "ab" if have else "wb"
+            done, shown = have, -1
+            with part.open(mode) as out:
+                while True:
+                    try:
+                        block = resp.read(1 << 20)
+                    except (urllib.error.URLError, OSError) as e:
+                        die(f"判定モデルの取得が途中で止まりました（{f['name']}）: {e}。やり直すと続きから取ります", 3)
+                    if not block:
+                        break
+                    out.write(block)
+                    h.update(block)
+                    done += len(block)
+                    pct = done * 100 // max(f["bytes"], 1)
+                    if not quiet and f["bytes"] > (50 << 20) and pct // 10 != shown:
+                        shown = pct // 10
+                        print(f"koko: {f['name']} {pct}%（{done / 1e9:.2f} / {f['bytes'] / 1e9:.2f} GB）", file=sys.stderr, flush=True)
+    if part.stat().st_size != f["bytes"] or h.hexdigest() != f["sha256"]:
+        part.unlink(missing_ok=True)
+        die(f"取得した {f['name']} の大きさか SHA-256 が、model.json と合いません。やり直しても直らなければ、koko を入れ直してください", 3)
+    os.replace(part, dest)
+
+
+def ensure_model(deep: bool = False, quiet: bool = False) -> Path:
+    """判定モデルが揃っていなければ、Hugging Face から取得する。揃ったディレクトリを返す。"""
+    d = model_dir()
+    if LOCAL_MODEL:
+        problems = model_problems(deep)
+        if problems:
+            die("KOKO_MODEL のモデルに問題があります:\n" + "\n".join(f"  - {p}" for p in problems), 3)
+        return d
+    s = source()
+
+    def todo(check_sha: bool) -> list[dict]:
+        def ok(f: dict) -> bool:
+            p = d / f["name"]
+            return p.exists() and p.stat().st_size == f["bytes"] and (not check_sha or sha256_file(p) == f["sha256"])
+
+        return [f for f in s["files"] if not ok(f)]
+
+    if not deep and not todo(False):
+        return d
+    d.mkdir(parents=True, exist_ok=True)
+    with open(d / ".lock", "w") as lock:
+        try:
+            import fcntl  # POSIX だけ。ない環境では、同時に取得すると取り直しになることがある
+
+            fcntl.flock(lock, fcntl.LOCK_EX)
+        except ImportError:
+            pass
+        todo = todo(deep)  # ロック待ちの間に、ほかの呼び出しが取得したかもしれない
+        if not todo:
+            return d
+        endpoint = (os.environ.get("HF_ENDPOINT") or "https://huggingface.co").rstrip("/")
+        if not quiet:
+            total = sum(f["bytes"] for f in todo)
+            print(f"koko: 判定モデルを取得します（{s['repo']}、計 {total / 1e9:.2f} GB）→ {d}", file=sys.stderr, flush=True)
+        for f in todo:
+            dest = d / f["name"]
+            if dest.exists():
+                dest.unlink()
+            _download(f"{endpoint}/{s['repo']}/resolve/{s['revision']}/{f['name']}", dest, f, quiet)
+    return d
 
 
 def sha256_file(p: Path) -> str:
@@ -170,6 +278,10 @@ def probe(variant: str, offline: bool) -> dict | None:
 
 
 def cmd_setup(a) -> int:
+    d = ensure_model(deep=True)
+    print(json.dumps({"model": str(d), "model_id": model_id()}, ensure_ascii=False))
+    if a.model_only:
+        return 0
     variant = torch_variant(a.torch)
     uv = uv_bin()
     if not uv:
@@ -189,27 +301,32 @@ def cmd_setup(a) -> int:
 def doctor_info(deep: bool = False) -> dict:
     info: dict = {"koko_version": KOKO_VERSION, "python": sys.version.split()[0], "skill_dir": str(SKILL_DIR), "notes": []}
     try:
-        m = manifest()
+        m = source()
         problems = model_problems(deep)
-        info["model"] = {"dir": str(MODEL_DIR), "name": m.get("name"), "model_id": m["model_id"], "ok": not problems, "problems": problems, "deep": deep}
+        missing = bool(problems) and all(p.endswith("まだ取得していません") for p in problems)
+        info["model"] = {"dir": str(model_dir()), "name": m.get("name"), "model_id": m["model_id"], "repo": m.get("repo"), "revision": m.get("revision"),
+                         "local": bool(LOCAL_MODEL), "ok": not problems, "fetched": not missing, "problems": problems, "deep": deep}
     except SystemExit:
-        info["model"] = {"dir": str(MODEL_DIR), "ok": False, "problems": ["manifest.json がありません"]}
+        info["model"] = {"dir": None, "local": bool(LOCAL_MODEL), "ok": False, "fetched": False, "problems": ["判定モデルの情報（model.json）がありません"]}
     variant = torch_variant()
     uv = uv_bin()
-    found = probe(variant, offline=True) if uv and info["model"]["ok"] else None
+    found = probe(variant, offline=True) if uv else None
     info["runtime"] = {"variant": variant, "entry": str(ENTRIES[variant]), "uv": uv, "ready": bool(found), **({k: found[k] for k in ("torch", "transformers")} if found else {})}
     info["gpu"] = {"nvidia_smi": bool(shutil.which("nvidia-smi")), **({"cuda": found["cuda"], "mps": bool(found.get("mps")), "device_name": found["device_name"]} if found else {})}
     h = _health() if info["model"].get("model_id") else None
     info["server"] = {"running": bool(h), **({"pid": h["pid"], "port": h["port"], "device": h.get("device")} if h else {})}
-    if not info["model"]["ok"]:
+    if not info["model"]["ok"] and (info["model"]["local"] or info["model"]["dir"] is None):
         info["status"] = "unavailable"
-        info["notes"].append("同梱のモデルが壊れているか欠けています。koko を入れ直してください。")
+        info["notes"].append("判定モデルの情報がないか、KOKO_MODEL のモデルに問題があります。")
     elif not uv:
         info["status"] = "unavailable"
         info["notes"].append("uv がありません。https://docs.astral.sh/uv/ の手順で入れてください。")
-    elif not info["runtime"]["ready"]:
+    elif not info["model"]["ok"] or not info["runtime"]["ready"]:
         info["status"] = "needs_setup"
-        info["notes"].append("`uv run <koko.py> setup` で採点サーバの環境を用意してください（torch などを数 GB ダウンロードすることがあります）。")
+        if not info["model"]["ok"]:
+            info["notes"].append("`uv run <koko.py> setup` で、判定モデルを Hugging Face から取得してください（約 2.6 GB。取得の途中で止まったときは続きから取ります）。")
+        if not info["runtime"]["ready"]:
+            info["notes"].append("`uv run <koko.py> setup` で採点サーバの環境を用意してください（torch などを数 GB ダウンロードすることがあります）。")
     else:
         info["status"] = "ready"
     if info["runtime"]["ready"] and info["gpu"].get("cuda") is False:
@@ -228,7 +345,8 @@ def cmd_doctor(a) -> int:
     print(f"koko-doctor: {info['status']}")
     m, r, g, s = info["model"], info["runtime"], info["gpu"], info["server"]
     print(f"- koko {info['koko_version']}（{info['skill_dir']}）、python {info['python']}")
-    print(f"- モデル: {'OK' if m['ok'] else '問題あり'} {m.get('name') or ''} {m['dir']}" + ("（SHA-256 も確認）" if m.get("deep") else ""))
+    state = "OK" if m["ok"] else ("未取得" if not m.get("fetched") else "問題あり")
+    print(f"- モデル: {state} {m.get('name') or ''} {m['dir']}" + ("（SHA-256 も確認）" if m.get("deep") else ""))
     for p in m["problems"]:
         print(f"    - {p}")
     print(f"- 採点サーバの環境: {'あり' if r['ready'] else 'なし'}（torch {r.get('torch') or r['variant']}、uv {'あり' if r['uv'] else 'なし'}）{r['entry']}")
@@ -295,16 +413,14 @@ def server_start(quiet: bool = False) -> dict:
         if h:
             return h
         cmd = entry_cmd(torch_variant())
-        problems = model_problems()
-        if problems:
-            die("同梱のモデルに問題があります:\n" + "\n".join(f"  - {p}" for p in problems), 3)
+        mdir = ensure_model(quiet=quiet)
         try:
             state.unlink()
         except OSError:
             pass
         if not quiet:
             print("koko: 採点サーバを起動します（数秒〜十数秒。環境がまだなければ、uv が先に用意します）…", file=sys.stderr, flush=True)
-        env = {**os.environ, "KOKO_MODEL_DIR": str(MODEL_DIR), "KOKO_STATE_FILE": str(state), "KOKO_VERSION": KOKO_VERSION}
+        env = {**os.environ, "KOKO_MODEL_DIR": str(mdir), "KOKO_STATE_FILE": str(state), "KOKO_VERSION": KOKO_VERSION}
         with open(log, "a") as lf:
             proc = subprocess.Popen(
                 cmd,
@@ -1037,6 +1153,7 @@ def main() -> int:
     d.add_argument("--json", action="store_true")
     st = sub.add_parser("setup", help="実行環境を作る")
     st.add_argument("--torch", choices=sorted(ENTRIES), help="torch の種類（既定: nvidia-smi があれば cu130、なければ cpu）")
+    st.add_argument("--model-only", action="store_true", help="判定モデルの取得だけをする（採点サーバの環境は作らない）")
     s = sub.add_parser("server", help="採点サーバの起動・停止・確認")
     s.add_argument("action", choices=["start", "stop", "status"])
     sc = sub.add_parser("score", help="まとまりを採点する")

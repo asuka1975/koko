@@ -13,9 +13,9 @@
 # [tool.uv.sources]
 # torch = [{ index = "pytorch-cpu", marker = "sys_platform == 'linux' or sys_platform == 'win32'" }]
 # ///
-"""量子化した判定モデルのディレクトリを、koko が同梱する形（koko-model-v1）に書き出す（開発用）。
+"""量子化した判定モデルのディレクトリを、koko が Hugging Face から取得して使う形（koko-model-v1）に書き出す（開発用）。
 
-  - model.safetensors を、1 ファイルあたり --max-bytes 以下の shard に分ける（Git LFS の 1 ファイル 2 GB の上限より下にする）
+  - model.safetensors を、1 ファイルあたり --max-bytes 以下の shard に分ける（1 ファイルを大きくしすぎない）
   - quant_config.json から手元の絶対パスを取り除き（手元のパスを配布物に残さない）、形式の名前を koko-quant-v1 にする
   - 全ファイルの大きさと SHA-256、モデルの識別子（model_id）を manifest.json に書く
 

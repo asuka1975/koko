@@ -4,18 +4,22 @@
 
 - 文の取り出し: 判定モデルの学習データを作った前処理と、同じ文を返すか（fixtures/golden_sentences.json）
 - 文書の扱い: ブロック分け、計画の検証、組み立て、記録と照合（仮の採点 KOKO_FAKE_SCORER=1 で、GPU なしで動く）
-- 採点: 同梱のモデルが、モデルを作った環境で採点した値と同じ値を返すか（fixtures/golden_scores.json）。
-  採点サーバの環境（uv run <koko.py> setup）がなければ飛ばす。
+- 判定モデルの取得: 手元の HTTP サーバから、取得・続きからの取得・SHA-256 の照合ができるか
+- 採点: 判定モデルが、モデルを作った環境で採点した値と同じ値を返すか（fixtures/golden_scores.json）。
+  判定モデルの取得と採点サーバの環境（uv run <koko.py> setup）がなければ飛ばす。
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import shutil
 import subprocess
 import sys
 import tempfile
+import threading
 import unittest
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 sys.dont_write_bytecode = True
@@ -31,9 +35,9 @@ import kokotext  # noqa: E402
 UV = shutil.which("uv")
 
 
-def koko(*args, fake=True, check=True, cwd=None, input=None):
+def koko(*args, fake=True, check=True, cwd=None, input=None, env=None):
     """koko を、使う人と同じ `uv run <koko.py>` で動かす。"""
-    env = {**os.environ, "PYTHONDONTWRITEBYTECODE": "1"}
+    env = {**os.environ, "PYTHONDONTWRITEBYTECODE": "1", **(env or {})}
     env.pop("KOKO_FAKE_SCORER", None)
     if fake:
         env["KOKO_FAKE_SCORER"] = "1"
@@ -181,6 +185,92 @@ class TestPipeline(unittest.TestCase):
         self.assertIn("手で足した段落です。", self.src.read_text(encoding="utf-8"))
         koko("assemble", "--plan", self.work / "plan.json", "--force")
         self.assertNotIn("手で足した段落です。", self.src.read_text(encoding="utf-8"))
+
+
+class _ModelFiles(BaseHTTPRequestHandler):
+    """Hugging Face の /<repo>/resolve/<revision>/<name> を真似て、ファイルを返す（Range に応じる）。"""
+
+    root: Path
+    log: list
+
+    def do_GET(self):
+        name = self.path.rsplit("/", 1)[-1]
+        p = self.root / name
+        if not self.path.startswith("/user/fake/resolve/" + "a" * 40 + "/") or not p.exists():
+            self.send_error(404)
+            return
+        data = p.read_bytes()
+        rng = self.headers.get("Range")
+        self.log.append((name, rng))
+        start = int(rng.split("=")[1].split("-")[0]) if rng else 0
+        self.send_response(206 if rng else 200)
+        self.send_header("Content-Length", str(len(data) - start))
+        self.end_headers()
+        self.wfile.write(data[start:])
+
+    def log_message(self, *args):
+        pass
+
+
+@unittest.skipUnless(UV, "uv がない")
+class TestModelFetch(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        d = Path(self.tmp.name)
+        self.hub, self.cache = d / "hub", d / "cache"
+        self.hub.mkdir()
+        (self.hub / "config.json").write_text('{"a": 1}')
+        (self.hub / "model-00001-of-00001.safetensors").write_bytes(os.urandom(300_000))
+        (self.hub / "manifest.json").write_text("{}")
+        files = [{"name": p.name, "bytes": p.stat().st_size, "sha256": hashlib.sha256(p.read_bytes()).hexdigest()} for p in sorted(self.hub.iterdir())]
+        self.source = d / "model.json"
+        self.write_source(files)
+        handler = type("H", (_ModelFiles,), {"root": self.hub, "log": []})
+        self.log = handler.log
+        self.server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
+        threading.Thread(target=self.server.serve_forever, daemon=True).start()
+        self.env = {"KOKO_MODEL_SOURCE": str(self.source), "KOKO_CACHE_DIR": str(self.cache),
+                    "HF_ENDPOINT": f"http://127.0.0.1:{self.server.server_port}", "KOKO_MODEL": ""}
+        self.dir = self.cache / "models" / ("fake-model-" + "0123456789ab")
+
+    def write_source(self, files):
+        self.source.write_text(json.dumps({"format": "koko-model-source-v1", "name": "fake-model", "model_id": "0123456789abcdef" * 4,
+                                           "repo": "user/fake", "revision": "a" * 40, "files": files}))
+
+    def tearDown(self):
+        self.server.shutdown()
+        self.server.server_close()
+        self.tmp.cleanup()
+
+    def doctor_model(self):
+        return json.loads(koko("doctor", "--json", check=False, env=self.env).stdout)["model"]
+
+    def test_fetch_resume_and_verify(self):
+        self.assertFalse(self.doctor_model()["fetched"])
+        koko("setup", "--model-only", env=self.env)
+        for p in self.hub.iterdir():
+            self.assertEqual((self.dir / p.name).read_bytes(), p.read_bytes())
+        m = self.doctor_model()
+        self.assertTrue(m["ok"] and m["fetched"], m)
+        # 途中まで取ったファイル（.part）があれば、続きから取る
+        big = "model-00001-of-00001.safetensors"
+        (self.dir / big).unlink()
+        (self.dir / (big + ".part")).write_bytes((self.hub / big).read_bytes()[:100_000])
+        self.log.clear()
+        koko("setup", "--model-only", env=self.env)
+        self.assertEqual(self.log, [(big, "bytes=100000-")])
+        self.assertEqual((self.dir / big).read_bytes(), (self.hub / big).read_bytes())
+        self.assertFalse((self.dir / (big + ".part")).exists())
+
+    def test_sha_mismatch_is_rejected(self):
+        files = json.loads(self.source.read_text())["files"]
+        files[0]["sha256"] = "0" * 64
+        self.write_source(files)
+        r = koko("setup", "--model-only", check=False, env=self.env)
+        self.assertEqual(r.returncode, 3, r.stderr)
+        self.assertIn("SHA-256", r.stderr)
+        self.assertFalse((self.dir / files[0]["name"]).exists())
+        self.assertFalse((self.dir / (files[0]["name"] + ".part")).exists())
 
 
 @unittest.skipUnless(UV, "uv がない")

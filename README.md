@@ -12,24 +12,22 @@ koko は、AI が書いた文章を自然な文章に推敲するための、Cla
 | [APM](https://github.com/microsoft/apm) | インストール |
 | [uv](https://docs.astral.sh/uv/) | Python のスクリプトを動かす。Python 本体と依存（torch など）も uv が用意する |
 | NVIDIA の GPU（VRAM 4 GB 以上）推奨 | 意思決定モデル。GPU がなければ CPU 版の torch で動く（速さは未確認） |
-| ディスク 9GB | 意思決定モデルが約 2.6 GB（APM は `apm_modules/` と `.claude/` の両方にコピーするので、入れたプロジェクトで約 5 GB）。採点サーバの環境が約 4 GB（uv のキャッシュ） |
+| ディスク 7GB | 意思決定モデルが約 2.6 GB（初めて使うときに Hugging Face から `~/.cache/koko` にダウンロードする）。採点サーバの環境が約 4 GB（uv のキャッシュ） |
 
 koko は Linux で動作することが確認されています。
 
 ## インストール
 
 ```bash
-apm install <owner>/koko#v0.1.0
+apm install asuka1975/koko#v0.1.0
 ```
 
-APM によって、`.claude/skills/koko/`（判定モデルを含む）と `.claude/agents/koko-copy-editor.md` がプロジェクトに展開されます。koko の初回の使用の前には、次のコマンドの実行によって実行環境が用意されます。
+APM によって、`.claude/skills/koko/` と `.claude/agents/koko-copy-editor.md` がプロジェクトに展開されます。koko の初回の使用の前には、次のコマンドの実行によって実行環境が用意されます。
 
 ```bash
 uv run .claude/skills/koko/scripts/koko.py doctor   # 1 行目が koko-doctor: ready なら使える
-uv run .claude/skills/koko/scripts/koko.py setup    # needs_setup のとき（torch などを数 GB ダウンロードすることがある）
+uv run .claude/skills/koko/scripts/koko.py setup    # needs_setup のとき（意思決定モデル約 2.6 GB と、torch などをダウンロードする）
 ```
-
-判定モデルの重みのリポジトリでの保持には、Git LFS が採用されています（`.gitattributes`）。LFS の実体が取得されなかった場合、重みのファイルはポインタのまま残ります。このような状態においては、`doctor` の結果は `unavailable` となり、その理由も表示されます。
 
 ## 使い方
 
@@ -55,4 +53,4 @@ koko の開発における手順は、[DEVELOPMENT.md](DEVELOPMENT.md) に記述
 
 koko は GNU General Public License v3.0 or later（GPL-3.0-or-later）です（[LICENSE](LICENSE)）。利用者のもとに展開される koko のスキルにも、同じ文面のライセンス文書が付属しています（`.apm/skills/koko/LICENSE`）。
 
-- koko の判定モデル（`model/`）は、Apache License 2.0 のモデルの派生物であり、Apache License 2.0 で配布されています（`model/LICENSE-Apache-2.0.txt`、`model/NOTICE.md`）。
+- koko の判定モデル（[asuka1975/saihai-v1-8b-koko-2bit](https://huggingface.co/asuka1975/saihai-v1-8b-koko-2bit)）は、Apache License 2.0 のモデルの派生物であり、Apache License 2.0 で配布されています。

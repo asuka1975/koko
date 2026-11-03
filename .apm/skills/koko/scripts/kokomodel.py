@@ -6,7 +6,7 @@
 読み込みと入力の組み立ては、学習と量子化のときと同じ処理にしてある（同じ入力に同じ値を返すため）。違いは次の 2 つ:
 
   - 重みを shard（manifest.json の shards）に分けて持ち、読み込むときにまとめる
-  - 読み込む前に、各ファイルの大きさを manifest.json と照らす（Git LFS のポインタのままのファイルを見つける）
+  - 読み込む前に、各ファイルの大きさを manifest.json と照らす（取得が途中で止まったファイルを見つける）
 
 P(Yes) は、その 1 文を Wikipedia 由来（人が書いた側）と判定する確率。
 """
@@ -43,16 +43,14 @@ def read_manifest(model_dir: Path) -> dict:
 
 
 def check_files(model_dir: Path, manifest: dict) -> list[str]:
-    """大きさが manifest と合わないファイル（欠け、LFS のポインタなど）の説明を返す。空なら問題なし。"""
+    """大きさが manifest と合わないファイル（欠け、取得の途中など）の説明を返す。空なら問題なし。"""
     problems = []
     for f in manifest["files"]:
         p = Path(model_dir) / f["name"]
         if not p.exists():
             problems.append(f"{f['name']}: ありません")
         elif p.stat().st_size != f["bytes"]:
-            head = p.open("rb").read(64)
-            lfs = head.startswith(b"version https://git-lfs")
-            problems.append(f"{f['name']}: 大きさが {p.stat().st_size} バイトで、{f['bytes']} バイトのはず" + ("（Git LFS のポインタのまま。`git lfs pull` が必要）" if lfs else ""))
+            problems.append(f"{f['name']}: 大きさが {p.stat().st_size} バイトで、{f['bytes']} バイトのはず")
     return problems
 
 

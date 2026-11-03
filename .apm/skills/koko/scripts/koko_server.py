@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 asuka1975
-"""koko の採点サーバ。同梱の判定モデルを 1 回だけ読み込み、localhost で採点を受け付ける。
+"""koko の採点サーバ。判定モデル（koko.py が ~/.cache/koko に取得したもの）を 1 回だけ読み込み、localhost で採点を受け付ける。
 
 入口は serve_cu130.py / serve_cpu.py（uv のスクリプト。依存の版を固定してある）。koko.py の `server start` が
 `uv run --locked --script serve_<種類>.py` で起動する。直接は起動しない想定。

@@ -1,0 +1,59 @@
+{
+ "format": "koko-model-source-v1",
+ "name": "saihai-v1-8b-koko-2bit",
+ "model_id": "dd981d6d9673ae5bfe1e63d6119b24d027b725ae6368ffd90231363f8e9be3c8",
+ "repo": "asuka1975/saihai-v1-8b-koko-2bit",
+ "revision": "d41b7cc38d77ed71bca1dbb8e4dc4a5d7080c3d4",
+ "files": [
+  {
+   "name": "config.json",
+   "bytes": 746,
+   "sha256": "2d62fd70c4026a7968d65469fa177a51de6f660e44d9ddf0adb4364bbe021f30"
+  },
+  {
+   "name": "decision-inference.json",
+   "bytes": 6421,
+   "sha256": "c5a21bbb7acc86c0b1f79a21b7667ba0059d0bfac270c9f8ecce5cb745ef6c8d"
+  },
+  {
+   "name": "model-00001-of-00003.safetensors",
+   "bytes": 998444208,
+   "sha256": "92f63676f8d05575669c0d2cd62bdd1abb3854e6116d7ad62594116687e72da7"
+  },
+  {
+   "name": "model-00002-of-00003.safetensors",
+   "bytes": 991167960,
+   "sha256": "8961e6629b36e72aa3b984d67bbf1ce1233f0a8ef6f5fb5ded94082659a84577"
+  },
+  {
+   "name": "model-00003-of-00003.safetensors",
+   "bytes": 645053144,
+   "sha256": "b30b406a8a84d4722cfbe13caa0d0ba9b54ce33b54df5a0675cdf7d7704af86e"
+  },
+  {
+   "name": "quant_config.json",
+   "bytes": 1095,
+   "sha256": "497169dfa4480a1e493c22fda2ab6d6ef7a7c68efb15802566bd36a1182bd8d0"
+  },
+  {
+   "name": "tokenizer.json",
+   "bytes": 12872922,
+   "sha256": "e849111e69f7803ec23069637b8beba107ec2347a9c1cb13d3c0c006f02f0657"
+  },
+  {
+   "name": "manifest.json",
+   "bytes": 1461,
+   "sha256": "bad08e2c302611c5ae0c218ad0f97702281323a4974bdb5603e02f63a872f7f2"
+  },
+  {
+   "name": "NOTICE.md",
+   "bytes": 3139,
+   "sha256": "4df10f6995cee03451ad36a80b88fb293709b58b09bcff556c6a2de33a5242a7"
+  },
+  {
+   "name": "LICENSE-Apache-2.0.txt",
+   "bytes": 11358,
+   "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+  }
+ ]
+}
