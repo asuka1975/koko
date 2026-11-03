@@ -25,7 +25,7 @@ uv lock --script .apm/skills/koko/scripts/serve_cpu.py
 | `.apm/skills/koko/references/interface.md` | ほかのスキルやワークフローから呼ぶときの入出力の取り決め |
 | `.apm/agents/koko-copy-editor.agent.md` | まとまりを推敲するサブエージェント |
 | `tests/` | テスト。`fixtures/` の正解は、判定モデルを作った環境の前処理と採点から作った |
-| `tools/shard_model.py` | 量子化したモデルを、koko が取得する形（shard と manifest）に書き出す |
+| `tools/build_model.py` | 量子化したモデルを、koko が取得する形（重み、JSON、manifest）に書き出す |
 | `tools/model_pointer.py` | Hugging Face に上げたモデルの取得先（`.apm/skills/koko/model.json`）を書く |
 
 ## 判定モデルを更新する
@@ -33,7 +33,7 @@ uv lock --script .apm/skills/koko/scripts/serve_cpu.py
 判定モデルは Hugging Face Hub に置き、koko は `model.json` に書いた版を `~/.cache/koko` に取得します。モデルを作り直したら、次の順に更新します。
 
 ```bash
-uv run tools/shard_model.py <量子化モデルのディレクトリ> <出力先>
+python3 tools/build_model.py <量子化モデルのディレクトリ> <出力先>
 hf upload <user>/<name> <出力先> . --repo-type model
 python3 tools/model_pointer.py <出力先> --repo <user>/<name> --revision <アップロードしたコミットの SHA>
 ```

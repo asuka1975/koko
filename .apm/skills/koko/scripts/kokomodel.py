@@ -5,7 +5,7 @@
 モデルは、koko の開発で saihai-v1-8b（hotchpotch、Apache-2.0）をファインチューニングし、2bit に量子化したもの。
 読み込みと入力の組み立ては、学習と量子化のときと同じ処理にしてある（同じ入力に同じ値を返すため）。違いは次の 2 つ:
 
-  - 重みを shard（manifest.json の shards）に分けて持ち、読み込むときにまとめる
+  - 重みのファイルを manifest.json の shards から読む（いまは model.safetensors の 1 つ）
   - 読み込む前に、各ファイルの大きさを manifest.json と照らす（取得が途中で止まったファイルを見つける）
 
 P(Yes) は、その 1 文を Wikipedia 由来（人が書いた側）と判定する確率。

@@ -46,7 +46,7 @@ deployments:
   owners:
   - .
   active_owner: .
-  content_hash: sha256:78f471550eadb07d42c2e2eb5d7520427a9b9298d5c4ea83e4cc28c8c8a0325b
+  content_hash: sha256:fe76addaff6bf11f9bd76b8269425b3d3142704a57fb20cb241848e6983c0377
 - kind: project-relative
   target: claude
   value: .claude/skills/koko/references/interface.md
@@ -55,7 +55,7 @@ deployments:
   owners:
   - .
   active_owner: .
-  content_hash: sha256:407d14241ecbac97c95271748edb55a6438ebfdf8bc4f70b2943537ce05cbd9a
+  content_hash: sha256:f68b6c0f9b9791e854c015b9c0626a8791747f88d9987596432adb710c97d654
 - kind: project-relative
   target: claude
   value: .claude/skills/koko/scripts/__pycache__/kokotext.cpython-312.pyc
@@ -73,7 +73,7 @@ deployments:
   owners:
   - .
   active_owner: .
-  content_hash: sha256:770b84d083d8a38ba0d908735c4fb99dfd3c2e93f0babb532acb91d21af6099e
+  content_hash: sha256:26d1e54afed2876c7e5ffb798f5c7956826ee98deff7206fe653f959bfb858e1
 - kind: project-relative
   target: claude
   value: .claude/skills/koko/scripts/koko_server.py
@@ -91,7 +91,7 @@ deployments:
   owners:
   - .
   active_owner: .
-  content_hash: sha256:1c99ee78559e85a0f4430f054bcab0cadcfcb1ce27800778433f41652879e39e
+  content_hash: sha256:dc419debb94fb6c3b06d69e7269c636a8701ab73eff742e26dd7ec243f55166c
 - kind: project-relative
   target: claude
   value: .claude/skills/koko/scripts/kokotext.py
@@ -157,12 +157,12 @@ local_deployed_file_hashes:
   .claude/agents/koko-copy-editor.md: sha256:36acc77ecc8977591ddfa2e5e143eb9609df8ea817e07cbe2255ae7d714c3f33
   .claude/skills/koko/LICENSE: sha256:3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986
   .claude/skills/koko/SKILL.md: sha256:8e09ae29868e0e247fb5933a7a89a67e19e76b8f87be016e10279e694e4db931
-  .claude/skills/koko/model.json: sha256:78f471550eadb07d42c2e2eb5d7520427a9b9298d5c4ea83e4cc28c8c8a0325b
-  .claude/skills/koko/references/interface.md: sha256:407d14241ecbac97c95271748edb55a6438ebfdf8bc4f70b2943537ce05cbd9a
+  .claude/skills/koko/model.json: sha256:fe76addaff6bf11f9bd76b8269425b3d3142704a57fb20cb241848e6983c0377
+  .claude/skills/koko/references/interface.md: sha256:f68b6c0f9b9791e854c015b9c0626a8791747f88d9987596432adb710c97d654
   .claude/skills/koko/scripts/__pycache__/kokotext.cpython-312.pyc: sha256:01be6cdbbea3d8981a7d3faaec84bd79927b89455e6fad9d09848470f9c5bdda
-  .claude/skills/koko/scripts/koko.py: sha256:770b84d083d8a38ba0d908735c4fb99dfd3c2e93f0babb532acb91d21af6099e
+  .claude/skills/koko/scripts/koko.py: sha256:26d1e54afed2876c7e5ffb798f5c7956826ee98deff7206fe653f959bfb858e1
   .claude/skills/koko/scripts/koko_server.py: sha256:04153cc217497aa18ec31d576a64bc173a35bdcfa487f4fbd90d819f36cdf9f6
-  .claude/skills/koko/scripts/kokomodel.py: sha256:1c99ee78559e85a0f4430f054bcab0cadcfcb1ce27800778433f41652879e39e
+  .claude/skills/koko/scripts/kokomodel.py: sha256:dc419debb94fb6c3b06d69e7269c636a8701ab73eff742e26dd7ec243f55166c
   .claude/skills/koko/scripts/kokotext.py: sha256:4754a30dfd7bcad2c6905e3f5cfaedaffbf72d08f3a03c2260f0899f188c97b5
   .claude/skills/koko/scripts/serve_cpu.py: sha256:b29f7df3a1a8498e76043383f73144a62c3db6a32a2484a0dfa7da6c4abac4dd
   .claude/skills/koko/scripts/serve_cpu.py.lock: sha256:5b3e639ceda406facc00370480f30f776a766f0f5a1e81096a93b9eea07a62c1

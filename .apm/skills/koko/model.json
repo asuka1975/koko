@@ -1,9 +1,9 @@
 {
  "format": "koko-model-source-v1",
  "name": "saihai-v1-8b-koko-2bit",
- "model_id": "dd981d6d9673ae5bfe1e63d6119b24d027b725ae6368ffd90231363f8e9be3c8",
+ "model_id": "babd4293a7cf882e838d75af214db7ff9768febf2786b43f5d913ad0e81e408d",
  "repo": "asuka1975/saihai-v1-8b-koko-2bit",
- "revision": "d41b7cc38d77ed71bca1dbb8e4dc4a5d7080c3d4",
+ "revision": "bd2f2b0f9bcf05d92d8556bb4ae118a3fc742096",
  "files": [
   {
    "name": "config.json",
@@ -16,19 +16,9 @@
    "sha256": "c5a21bbb7acc86c0b1f79a21b7667ba0059d0bfac270c9f8ecce5cb745ef6c8d"
   },
   {
-   "name": "model-00001-of-00003.safetensors",
-   "bytes": 998444208,
-   "sha256": "92f63676f8d05575669c0d2cd62bdd1abb3854e6116d7ad62594116687e72da7"
-  },
-  {
-   "name": "model-00002-of-00003.safetensors",
-   "bytes": 991167960,
-   "sha256": "8961e6629b36e72aa3b984d67bbf1ce1233f0a8ef6f5fb5ded94082659a84577"
-  },
-  {
-   "name": "model-00003-of-00003.safetensors",
-   "bytes": 645053144,
-   "sha256": "b30b406a8a84d4722cfbe13caa0d0ba9b54ce33b54df5a0675cdf7d7704af86e"
+   "name": "model.safetensors",
+   "bytes": 2634666120,
+   "sha256": "d93507b427777b635f029bc922d0b96d562a0fb00a7882eeee50770997661786"
   },
   {
    "name": "quant_config.json",
@@ -42,13 +32,13 @@
   },
   {
    "name": "manifest.json",
-   "bytes": 1461,
-   "sha256": "bad08e2c302611c5ae0c218ad0f97702281323a4974bdb5603e02f63a872f7f2"
+   "bytes": 924,
+   "sha256": "e0e789ffa1c963cb5100fc7757685e66b9304abcbb38f13673587af851e152ea"
   },
   {
    "name": "NOTICE.md",
-   "bytes": 3139,
-   "sha256": "4df10f6995cee03451ad36a80b88fb293709b58b09bcff556c6a2de33a5242a7"
+   "bytes": 3015,
+   "sha256": "be0e86b035ffc197cbc3d324ea167e07d81740eea0735678f93c999f4fc7fc6e"
   },
   {
    "name": "LICENSE-Apache-2.0.txt",

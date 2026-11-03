@@ -60,7 +60,7 @@ sys.path.insert(0, str(HERE))
 
 import kokotext  # noqa: E402
 
-KOKO_VERSION = "0.1.0"
+KOKO_VERSION = "0.1.1"
 PROTOCOL = 2
 SKILL_DIR = HERE.parent
 SOURCE_FILE = Path(os.environ.get("KOKO_MODEL_SOURCE") or SKILL_DIR / "model.json").resolve()

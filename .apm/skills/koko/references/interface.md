@@ -55,7 +55,7 @@ Skill ツールで `koko` を呼び、依頼に次を書けます。指定のな
 ```json
 {
   "format": "koko-record-v1",
-  "koko_version": "0.1.0",
+  "koko_version": "0.1.1",
   "model_id": "<モデルの識別子>",
   "source": "<原文のパス>", "source_sha256": "...",
   "out": "<OUT のパス>", "out_sha256": "...",

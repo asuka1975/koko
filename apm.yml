@@ -1,5 +1,5 @@
 name: koko
-version: 0.1.0
+version: 0.1.1
 description: 日本語の文章を、AI が書いたと見分けられにくい文章に推敲する Claude Code 向けのスキルとサブエージェント
 author: asuka1975
 license: GPL-3.0-or-later

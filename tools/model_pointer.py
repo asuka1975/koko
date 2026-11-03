@@ -9,7 +9,7 @@ koko は取得したファイルをこの値と照らす。
 
   python3 tools/model_pointer.py <モデルのディレクトリ> --repo <user>/<name> --revision <コミットの SHA>
 
-<モデルのディレクトリ> は tools/shard_model.py の出力（manifest.json があるところ）。Hugging Face に上げたものと
+<モデルのディレクトリ> は tools/build_model.py の出力（manifest.json があるところ）。Hugging Face に上げたものと
 同じファイルを指定する（1 バイトでも違うと、koko の取得が SHA-256 の照合で止まる）。
 """
 from __future__ import annotations
