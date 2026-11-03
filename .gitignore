@@ -1,0 +1,8 @@
+# APM の展開先（apm install で .apm/ から作る。中身はこのリポジトリに含めない）
+.claude/
+apm_modules/
+# koko の作業ディレクトリ
+.koko/
+# Python
+__pycache__/
+*.pyc
