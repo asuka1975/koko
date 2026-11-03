@@ -81,7 +81,7 @@ def _modules():
     import torch.nn.functional as F
 
     def unpack(packed, bits: int):
-        shifts = torch.arange(0, 8, bits, dtype=torch.uint8, device=packed.device)
+        shifts = torch.arange(0, 8, bits, dtype=torch.uint8).to(packed.device)  # MPS でも作れるように CPU で作って移す
         return ((packed.unsqueeze(-1) >> shifts) & ((1 << bits) - 1)).reshape(packed.shape[0], -1)
 
     def dequantize(packed, scale, zero, bits: int, group: int, dtype=torch.bfloat16):

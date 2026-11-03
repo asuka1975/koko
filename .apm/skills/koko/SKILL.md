@@ -38,7 +38,7 @@ description: 日本語の文章（Markdown の記事、ドキュメント、READ
 
 ### 1. 準備
 
-- `$KOKO doctor` を実行します。`needs_setup` なら、数 GB のダウンロードがありうることをユーザーに一言伝えてから `$KOKO setup` を実行します。`unavailable` なら、出力をユーザーに伝えて止めます。CUDA が使えないと出たときは、採点が CPU で動くこと（CPU での速さは確かめていないこと）を伝えます。
+- `$KOKO doctor` を実行します。`needs_setup` なら、数 GB のダウンロードがありうることをユーザーに一言伝えてから `$KOKO setup` を実行します。`unavailable` なら、出力をユーザーに伝えて止めます。CUDA も MPS も使えないと出たときは、採点が CPU で動くこと（CPU での速さは確かめていないこと）を伝えます。
 - 対象のファイルを確かめます。文章が会話に貼られただけなら、作業ディレクトリに `.md` として保存してから始めます。
 - 作業ディレクトリ `WORK` は、指定がなければ現在のディレクトリの `.koko/<ファイル名の stem>/` にします。出力 `OUT` は、指定がなければ元のファイルです（**上書きします**）。元のファイルの写しは、手順 3 で `WORK/source.md` に残ります。上書きしたくないと、ユーザーか呼び出し元が求めたときだけ、別の `OUT` を指定します。
 - 採点サーバを先に起動します: `$KOKO server start`。エージェントを並列で起動する前に起動しておくと、モデルの読み込みが重なりません。
@@ -151,9 +151,9 @@ $KOKO assemble --plan WORK/plan.json --out OUT  # 別の OUT を指定された�
 
 | 変数 | 既定 |
 |---|---|
-| `KOKO_TORCH` | 採点サーバの torch の種類。`nvidia-smi` があれば `cu130`、なければ `cpu` |
+| `KOKO_TORCH` | 採点サーバの torch の種類。`nvidia-smi` があれば `cu130`、なければ `cpu`（macOS では、MPS を使える PyPI の torch が入る） |
 | `KOKO_STATE_DIR` | 採点サーバの状態とログの置き場所。`$XDG_RUNTIME_DIR/koko`、なければ一時ディレクトリの `koko-<uid>` |
 | `KOKO_MODEL` | このスキルの `model/` |
-| `KOKO_DEVICE` | CUDA が使えれば `cuda`、なければ `cpu` |
+| `KOKO_DEVICE` | CUDA が使えれば `cuda`、次に MPS（Apple Silicon の GPU）が使えれば `mps`、どちらもなければ `cpu` |
 | `KOKO_IDLE_SECONDS` | `1800` |
 | `KOKO_FAKE_SCORER` | なし（`1` で、モデルを使わずに仮の値を返す。テスト用） |

@@ -20,7 +20,7 @@ uv run <koko.py> doctor --json
 | `needs_setup` | 採点サーバの環境がない。`uv run <koko.py> setup` で用意できる（初回は torch などを数 GB ダウンロードすることがある） |
 | `unavailable` | 使えない。同梱のモデルが壊れている・欠けている（`model.problems`）、または uv がない |
 
-`gpu.cuda` が `false` なら、採点は CPU で動きます（CPU での速さは確かめていません）。テキストの出力では、1 行目が `koko-doctor: <status>` です。終了コードは `ready` のとき 0、それ以外は 1 です。
+`gpu.cuda` が `false` で `gpu.mps` が `true` なら、採点は MPS（Apple Silicon の GPU）で動きます。どちらも `false` なら、採点は CPU で動きます（CPU での速さは確かめていません）。テキストの出力では、1 行目が `koko-doctor: <status>` です。終了コードは `ready` のとき 0、それ以外は 1 です。
 
 ## koko スキルに渡せるもの
 

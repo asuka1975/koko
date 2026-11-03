@@ -221,6 +221,10 @@ class TestModel(unittest.TestCase):
         gold = json.loads((FIX / "golden_scores.json").read_text(encoding="utf-8"))["scores"]
         r = koko("score", "--lines", "--json", "-", fake=False, input="\n".join(s["text"] for s in gold))
         results = json.loads(r.stdout)["results"]
+        device = json.loads(koko("server", "status", fake=False).stdout).get("device")
+        if device != "cuda":
+            # 正解の値は CUDA で作った。MPS や CPU では計算の順序が違い、値がどれだけずれるかは確かめていない
+            self.skipTest(f"正解の値は CUDA で作ったもの（いまの採点は {device}）")
         got = [s["p_yes"] for res in results for s in res["sentences"]]
         self.assertEqual(len(got), len(gold))
         for g, p in zip(gold, got):

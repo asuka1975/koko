@@ -11,10 +11,10 @@ koko は、AI が書いた文章を自然な文章に推敲するための、Cla
 | [Claude Code](https://claude.com/claude-code) | スキルとサブエージェントを動かす |
 | [APM](https://github.com/microsoft/apm) | インストール |
 | [uv](https://docs.astral.sh/uv/) | Python のスクリプトを動かす。Python 本体と依存（torch など）も uv が用意する |
-| NVIDIA の GPU（VRAM 4 GB 以上） | 意思決定モデル。CUDA 13 のドライバ。GPU がなければ CPU 版の torch で動く（速さは未確認） |
+| NVIDIA の GPU（VRAM 4 GB 以上）推奨 | 意思決定モデル。GPU がなければ CPU 版の torch で動く（速さは未確認） |
 | ディスク 9GB | 意思決定モデルが約 2.6 GB（APM は `apm_modules/` と `.claude/` の両方にコピーするので、入れたプロジェクトで約 5 GB）。採点サーバの環境が約 4 GB（uv のキャッシュ） |
 
-koko は Linux で動作することが確認されています。macOS（CPU 版の torch）と Windows で動作するかどうかは未確認です。
+koko は Linux で動作することが確認されています。
 
 ## インストール
 

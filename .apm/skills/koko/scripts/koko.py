@@ -25,9 +25,9 @@ P(Yes) は、同梱の判定モデル（saihai-v1-8b を基にファインチュ
   verify --workdir W         推敲後の文書が、assemble で記録した本文のままかを確かめる（1 行目に koko-check: …）
 
 環境変数:
-  KOKO_TORCH         採点サーバの torch の種類: cu130 / cpu（既定: nvidia-smi があれば cu130）
+  KOKO_TORCH         採点サーバの torch の種類: cu130 / cpu（既定: nvidia-smi があれば cu130。macOS は cpu の入口で、MPS を使える PyPI の torch が入る）
   KOKO_MODEL         同梱以外のモデルのディレクトリ（manifest.json があるもの）
-  KOKO_DEVICE        cuda / cpu（既定: CUDA が使えれば cuda）
+  KOKO_DEVICE        cuda / mps / cpu（既定: CUDA が使えれば cuda、次に MPS が使えれば mps、どちらもなければ cpu）
   KOKO_IDLE_SECONDS  採点サーバが自動で止まるまでの待ち時間（既定: 1800）
   KOKO_STATE_DIR     採点サーバの状態とログの置き場所（既定: $XDG_RUNTIME_DIR/koko、なければ一時ディレクトリの koko-<uid>）
   KOKO_FAKE_SCORER   1 にすると、モデルを使わず文から決まる仮の値を返す（テスト用）
@@ -179,8 +179,10 @@ def cmd_setup(a) -> int:
     if not info:
         die("環境は作れましたが、torch などを読み込めませんでした。`doctor` で確かめてください。")
     print(json.dumps({"variant": variant, **info}, ensure_ascii=False))
-    if variant != "cpu" and not info["cuda"]:
-        print("注意: CUDA が使えません。採点は CPU で動きます（CPU での速さは確かめていません）。", file=sys.stderr)
+    if info.get("mps"):
+        print("MPS（Apple Silicon の GPU）で採点します。", file=sys.stderr)
+    elif not info["cuda"]:
+        print("注意: CUDA も MPS も使えません。採点は CPU で動きます（CPU での速さは確かめていません）。", file=sys.stderr)
     return 0
 
 
@@ -196,7 +198,7 @@ def doctor_info(deep: bool = False) -> dict:
     uv = uv_bin()
     found = probe(variant, offline=True) if uv and info["model"]["ok"] else None
     info["runtime"] = {"variant": variant, "entry": str(ENTRIES[variant]), "uv": uv, "ready": bool(found), **({k: found[k] for k in ("torch", "transformers")} if found else {})}
-    info["gpu"] = {"nvidia_smi": bool(shutil.which("nvidia-smi")), **({"cuda": found["cuda"], "device_name": found["device_name"]} if found else {})}
+    info["gpu"] = {"nvidia_smi": bool(shutil.which("nvidia-smi")), **({"cuda": found["cuda"], "mps": bool(found.get("mps")), "device_name": found["device_name"]} if found else {})}
     h = _health() if info["model"].get("model_id") else None
     info["server"] = {"running": bool(h), **({"pid": h["pid"], "port": h["port"], "device": h.get("device")} if h else {})}
     if not info["model"]["ok"]:
@@ -211,7 +213,10 @@ def doctor_info(deep: bool = False) -> dict:
     else:
         info["status"] = "ready"
     if info["runtime"]["ready"] and info["gpu"].get("cuda") is False:
-        info["notes"].append("CUDA が使えないので、採点は CPU で動きます（CPU での速さは確かめていません）。")
+        if info["gpu"].get("mps"):
+            info["notes"].append("CUDA はないので、採点は MPS（Apple Silicon の GPU）で動きます。")
+        else:
+            info["notes"].append("CUDA も MPS も使えないので、採点は CPU で動きます（CPU での速さは確かめていません）。")
     return info
 
 
@@ -227,7 +232,12 @@ def cmd_doctor(a) -> int:
     for p in m["problems"]:
         print(f"    - {p}")
     print(f"- 採点サーバの環境: {'あり' if r['ready'] else 'なし'}（torch {r.get('torch') or r['variant']}、uv {'あり' if r['uv'] else 'なし'}）{r['entry']}")
-    gpu = "CUDA " + (g.get("device_name") or "") if g.get("cuda") else ("CUDA なし" if "cuda" in g else ("nvidia-smi あり" if g["nvidia_smi"] else "nvidia-smi なし"))
+    if g.get("cuda"):
+        gpu = "CUDA " + (g.get("device_name") or "")
+    elif g.get("mps"):
+        gpu = "MPS（Apple Silicon）"
+    else:
+        gpu = "CUDA・MPS なし" if "cuda" in g else ("nvidia-smi あり" if g["nvidia_smi"] else "nvidia-smi なし")
     print(f"- GPU: {gpu}")
     print(f"- 採点サーバ: {'動作中（pid ' + str(s['pid']) + '）' if s['running'] else '停止中（採点のときに自動で起動）'}")
     for n in info["notes"]:

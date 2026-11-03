@@ -22,7 +22,7 @@
 """koko の採点サーバを、torch の cpu 版で動かす入口。koko.py が `uv run --locked --script` で起動する。
 
 依存の版は、判定モデルを作った環境と同じにしてある（変えると採点の値が変わることがある）。
-すべての版は隣の serve_cpu.py.lock に固定してある。macOS では torch を PyPI から入れる。
+すべての版は隣の serve_cpu.py.lock に固定してある。macOS では torch を PyPI から入れる（Apple Silicon 用だけ。MPS で動く）。
 """
 import sys
 from pathlib import Path

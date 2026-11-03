@@ -11,12 +11,12 @@
 文への分割はクライアント（koko.py、kokotext.py）が行う。サーバは 1 文ごとの P(Yes) だけを返す。
 同じ文には、どの呼び出しでも同じ値を返す（1 文ずつ採点し、結果を覚えておく）。
 
-  --probe  モデルを読まずに、torch などの版と CUDA が使えるかを JSON で出して終わる
+  --probe  モデルを読まずに、torch などの版と、CUDA と MPS（Apple Silicon の GPU）が使えるかを JSON で出して終わる
 
 環境変数（koko.py が渡す）:
   KOKO_MODEL_DIR     モデルのディレクトリ（manifest.json があるところ）
   KOKO_STATE_FILE    起動したら port と pid を書くファイル
-  KOKO_DEVICE        cuda / cpu（既定: CUDA が使えれば cuda）
+  KOKO_DEVICE        cuda / mps / cpu（既定: CUDA が使えれば cuda、次に MPS が使えれば mps、どちらもなければ cpu）
   KOKO_IDLE_SECONDS  この秒数だけ要求がなければ終了して GPU を空ける（既定: 1800）
   KOKO_VERSION       koko のバージョン（health に載せるだけ）
 """
@@ -39,14 +39,34 @@ def probe() -> dict:
     import transformers
 
     cuda = torch.cuda.is_available()
+    mps = mps_usable(torch)
     return {
         "torch": torch.__version__,
         "transformers": transformers.__version__,
         "safetensors": safetensors.__version__,
         "tokenizers": tokenizers.__version__,
         "cuda": cuda,
-        "device_name": torch.cuda.get_device_name(0) if cuda else None,
+        "mps": mps,
+        "device_name": torch.cuda.get_device_name(0) if cuda else ("mps" if mps else None),
     }
+
+
+def mps_usable(torch) -> bool:
+    """MPS があり、判定モデルの計算に使う bfloat16 の行列積ができるか。"""
+    if not (hasattr(torch.backends, "mps") and torch.backends.mps.is_available()):
+        return False
+    try:
+        x = torch.ones(2, 2, dtype=torch.bfloat16, device="mps")
+        (x @ x).cpu()
+        return True
+    except (RuntimeError, TypeError):
+        return False
+
+
+def default_device(torch) -> str:
+    if torch.cuda.is_available():
+        return "cuda"
+    return "mps" if mps_usable(torch) else "cpu"
 
 
 def serve() -> int:
@@ -56,7 +76,7 @@ def serve() -> int:
 
     model_dir = Path(os.environ["KOKO_MODEL_DIR"])
     state_file = Path(os.environ["KOKO_STATE_FILE"])
-    device = os.environ.get("KOKO_DEVICE") or ("cuda" if torch.cuda.is_available() else "cpu")
+    device = os.environ.get("KOKO_DEVICE") or default_device(torch)
     idle = float(os.environ.get("KOKO_IDLE_SECONDS", "1800"))
     version = os.environ.get("KOKO_VERSION", "")
 
